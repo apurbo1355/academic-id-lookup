@@ -32,9 +32,9 @@
 <main>
   <div class="tag">BdMO Academic Team 2026</div>
   <h1>তোমার ID খুঁজে নাও</h1>
-  <p class="sub">ইমেইল, মোবাইল নম্বর অথবা পুরো নাম লিখে সার্চ করো।</p>
+  <p class="sub">ইমেইল অথবা পুরো নাম লিখে সার্চ করো।</p>
   <form id="f" autocomplete="off">
-    <input id="q" placeholder="Email / Mobile / Full name" aria-label="Email, mobile number or full name" required>
+    <input id="q" placeholder="Email / Full name" aria-label="Email or full name" required>
     <button id="b" type="submit">Search</button>
   </form>
   <div class="hint">নাম দিলে পুরো নাম হুবহু (বানানসহ) লিখতে হবে, যেভাবে ফর্মে দিয়েছিলে।</div>
@@ -47,12 +47,8 @@ const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const hex=u=>[...u].map(x=>x.toString(16).padStart(2,"0")).join("");
 function keys(raw){
   const s=raw.trim();
-  if(s.includes("@")){const e=s.toLowerCase();return ["e:"+e];}
-  const d=s.replace(/\D/g,"");
-  if(d.length>=10 && d.length>=s.replace(/\s/g,"").length-2){
-    let p=d; if(p.startsWith("880")) p=p.slice(3); p=p.replace(/^0+/,"");
-    return p.length===10?["p:"+p]:[];
-  }
+  if(s.includes("@")) return ["e:"+s.toLowerCase()];
+  if(/^[+\d\s()-]+$/.test(s)) return null;
   const n=s.toLowerCase().replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");
   return n?["n:"+n]:[];
 }
@@ -79,7 +75,9 @@ document.getElementById("f").addEventListener("submit",async e=>{
   e.preventDefault(); btn.disabled=true; out.textContent="খোঁজা হচ্ছে…";
   try{
     if(!DB) DB=await (await fetch("data.json",{cache:"no-store"})).json();
-    let res=null; for(const k of keys(document.getElementById("q").value)){res=await look(k); if(res) break;}
+    const ks=keys(document.getElementById("q").value);
+    if(ks===null){out.innerHTML='<div class="msg">মোবাইল নম্বর দিয়ে সার্চ করা যায় না। ইমেইল বা পুরো নাম দাও।</div>';btn.disabled=false;return;}
+    let res=null; for(const k of ks){res=await look(k); if(res) break;}
     show(res);
   }catch(err){out.innerHTML='<div class="msg">সমস্যা হয়েছে, পেজ রিফ্রেশ করে আবার চেষ্টা করো।</div>';}
   btn.disabled=false;

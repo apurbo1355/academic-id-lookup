@@ -29,9 +29,6 @@ for r in rows:
     if email.strip():
         e = n_email(email); keys.add("e:" + e)
         if e.startswith("."): keys.add("e:" + e.lstrip("."))
-    for p in (r[3], r[4] if len(r) > 4 else ""):
-        p = n_phone(p or "")
-        if p: keys.add("p:" + p)
     if n_name(name): keys.add("n:" + n_name(name))
     for k in keys:
         if rec not in groups[k]: groups[k].append(rec)
