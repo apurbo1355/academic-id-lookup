@@ -9,4 +9,5 @@ AES-GCM key that decrypts that one record (`{name, id}`). A visitor can only see
 already know that person's exact email, number or full name.
 
 ## Updating the data
-Run `python3 scripts/build.py sheet.csv data.json` on a fresh CSV export of the sheet and commit the new `data.json`.
+Run `python3 scripts/build.py sheet.csv data.json excluded_ids.txt`
+(`excluded_ids.txt` = one ID per line for red-marked rows that must not be searchable) on a fresh CSV export of the sheet and commit the new `data.json`.

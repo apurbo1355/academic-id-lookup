@@ -6,6 +6,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 ITER = 150000
 src, out = sys.argv[1], sys.argv[2]
+# optional 3rd arg: file of IDs to exclude (e.g. red-marked rows in the sheet)
+exclude = set(open(sys.argv[3]).read().split()) if len(sys.argv) > 3 else set()
 salt = os.urandom(16)
 
 def n_email(s): return s.strip().lower()
@@ -22,6 +24,7 @@ count = 0
 for r in rows:
     if not r or not r[0].strip(): continue
     rid, email, name = r[0].strip(), r[1], r[2]
+    if rid in exclude: continue
     disp = re.sub(r"[`]+", "", name).strip()
     rec = {"name": disp, "id": rid}
     count += 1
