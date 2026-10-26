@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Academic Team ID Lookup</title>
+<style>
+  :root{--bg:#f6f5f1;--card:#fff;--ink:#1b1d22;--muted:#6b6f78;--line:#e3e1da;--accent:#0f6b5c;--accent-ink:#fff;--err:#a3322b}
+  @media (prefers-color-scheme:dark){:root{--bg:#121417;--card:#1b1e23;--ink:#eceae4;--muted:#9a9ea7;--line:#2b2f36;--accent:#3fb39d;--accent-ink:#0b1412;--err:#ef8a82}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali",sans-serif;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 40px}
+  main{width:100%;max-width:460px}
+  .tag{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
+  h1{font-size:26px;line-height:1.2;margin:6px 0 6px}
+  p.sub{color:var(--muted);margin:0 0 24px;font-size:15px}
+  form{display:flex;gap:8px}
+  input{flex:1;min-width:0;font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);outline:none}
+  input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+  button{font:inherit;font-weight:600;padding:12px 18px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+  button:disabled{opacity:.6;cursor:wait}
+  .hint{font-size:13px;color:var(--muted);margin-top:8px}
+  #out{margin-top:22px}
+  .res{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:10px}
+  .res .n{font-size:18px;font-weight:600}
+  .res .i{margin-top:4px;color:var(--muted);font-size:14px}
+  .res .i b{color:var(--ink);font-variant-numeric:tabular-nums;font-size:20px;letter-spacing:.02em}
+  .msg{color:var(--err);font-size:15px}
+</style>
+</head>
+<body>
+<main>
+  <div class="tag">BdMO Academic Team 2026</div>
+  <h1>তোমার ID খুঁজে নাও</h1>
+  <p class="sub">ইমেইল, মোবাইল নম্বর অথবা পুরো নাম লিখে সার্চ করো।</p>
+  <form id="f" autocomplete="off">
+    <input id="q" placeholder="Email / Mobile / Full name" aria-label="Email, mobile number or full name" required>
+    <button id="b" type="submit">Search</button>
+  </form>
+  <div class="hint">নাম দিলে পুরো নাম হুবহু (বানানসহ) লিখতে হবে, যেভাবে ফর্মে দিয়েছিলে।</div>
+  <div id="out" aria-live="polite"></div>
+</main>
+<script>
+let DB=null;
+const enc=new TextEncoder();
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const hex=u=>[...u].map(x=>x.toString(16).padStart(2,"0")).join("");
+function keys(raw){
+  const s=raw.trim();
+  if(s.includes("@")){const e=s.toLowerCase();return ["e:"+e];}
+  const d=s.replace(/\D/g,"");
+  if(d.length>=10 && d.length>=s.replace(/\s/g,"").length-2){
+    let p=d; if(p.startsWith("880")) p=p.slice(3); p=p.replace(/^0+/,"");
+    return p.length===10?["p:"+p]:[];
+  }
+  const n=s.toLowerCase().replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");
+  return n?["n:"+n]:[];
+}
+async function look(k){
+  const base=await crypto.subtle.importKey("raw",enc.encode(k),"PBKDF2",false,["deriveBits"]);
+  const bits=new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:b64(DB.salt),iterations:DB.iter},base,384));
+  const blob=DB.d[hex(bits.slice(0,16))]; if(!blob) return null;
+  const raw=b64(blob), key=await crypto.subtle.importKey("raw",bits.slice(16),"AES-GCM",false,["decrypt"]);
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:raw.slice(0,12)},key,raw.slice(12));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+const out=document.getElementById("out"), btn=document.getElementById("b");
+function show(list){
+  out.innerHTML="";
+  if(!list){out.innerHTML='<div class="msg">কোনো মিল পাওয়া যায়নি। বানান/নম্বর আবার দেখে চেষ্টা করো।</div>';return;}
+  for(const r of list){
+    const d=document.createElement("div");d.className="res";
+    const n=document.createElement("div");n.className="n";n.textContent=r.name;
+    const i=document.createElement("div");i.className="i";i.append("ID: ");const b=document.createElement("b");b.textContent=r.id;i.append(b);
+    d.append(n,i);out.append(d);
+  }
+}
+document.getElementById("f").addEventListener("submit",async e=>{
+  e.preventDefault(); btn.disabled=true; out.textContent="খোঁজা হচ্ছে…";
+  try{
+    if(!DB) DB=await (await fetch("data.json",{cache:"no-store"})).json();
+    let res=null; for(const k of keys(document.getElementById("q").value)){res=await look(k); if(res) break;}
+    show(res);
+  }catch(err){out.innerHTML='<div class="msg">সমস্যা হয়েছে, পেজ রিফ্রেশ করে আবার চেষ্টা করো।</div>';}
+  btn.disabled=false;
+});
+</script>
+</body>
+</html>
